@@ -1,0 +1,38 @@
+name: Daily Crawl
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd crawler && npm install
+
+      - name: Run crawler
+        env:
+          CRAWL4AI_URL: ${{ secrets.CRAWL4AI_URL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: cd crawler && npx tsx src/index.ts
+
+      - name: Commit updated output
+        run: |
+          git config --global user.email "bot@bundtxt.de"
+          git config --global user.name "BundTxt Crawler"
+          git add output/
+          git diff --staged --quiet || git commit -m "crawl: $(date -u +%Y-%m-%d)"
+          git push
