@@ -1,0 +1,45 @@
+name: Dry Run Crawl
+
+on:
+  workflow_dispatch:
+    inputs:
+      city:
+        description: "City id to crawl (leave empty for all cities)"
+        required: false
+        type: string
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: cd crawler && npm install
+
+      - name: Run dry-run crawl
+        env:
+          CRAWL4AI_URL: ${{ secrets.CRAWL4AI_URL }}
+          DRY_RUN: "1"
+          CITY_ID: ${{ inputs.city }}
+        run: |
+          cd crawler
+          if [ -n "$CITY_ID" ]; then
+            npx tsx src/index.ts --dry-run --city "$CITY_ID"
+          else
+            npx tsx src/index.ts --dry-run
+          fi
+
+      - name: Upload crawl artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawl-dry-run-${{ inputs.city || 'all' }}-${{ github.run_id }}
+          path: output/**/dry-run/
+          retention-days: 14
+          if-no-files-found: error

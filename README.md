@@ -12,6 +12,7 @@ Edit [`crawler/data/cities.json`](crawler/data/cities.json) and add an object wi
 - `language` — source language (usually `"de"`)
 - `hotline` — phone number
 - `appointmentUrl` — appointment booking URL
+- `crawlPathPrefixes` — optional extra URL path prefixes to include when crawling (e.g. `["/ukraine/"]`). The path derived from `url` is always included automatically.
 
 The crawler will pick up the new city on the next run.
 
@@ -27,6 +28,37 @@ npm start
 ```
 
 Generated files are written to `output/{city-id}/llms.txt`.
+
+## Dry run (crawl only, no llms.txt)
+
+Inspect crawl output before calling OpenRouter.
+
+### GitHub Actions (recommended)
+
+1. Push your code to GitHub
+2. Go to **Actions** → **Dry Run Crawl** → **Run workflow**
+3. Optionally enter a city id (e.g. `berlin`) — leave empty to crawl all cities
+4. When finished, open the workflow run → **Artifacts** → download the zip
+
+Each city produces files under `output/{city-id}/dry-run/`:
+
+| File | Contents |
+|---|---|
+| `summary.json` | Page count, path prefixes, URLs crawled, char counts |
+| `crawled-content.md` | Combined markdown that would be sent to OpenRouter |
+| `prompt-preview.txt` | Full OpenRouter prompt (without making the API call) |
+| `pages.json` | Full crawl data per page (url, markdown, links) |
+
+Dry-run artifacts are **not committed** to the repo. Only `CRAWL4AI_URL` is required — no OpenRouter key.
+
+### CLI (if you have a machine that can run it)
+
+```bash
+cd crawler
+npm install
+CRAWL4AI_URL=... npm run dry-run -- --city berlin
+# Artifacts: ../output/berlin/dry-run/
+```
 
 ## Railway + GitHub Actions
 

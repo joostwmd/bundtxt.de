@@ -1,5 +1,9 @@
-import type { Crawl4AiCrawlResult, Crawl4AiTaskResponse, CrawlPage } from "./types.js";
+import type { Crawl4AiCrawlResult, Crawl4AiTaskResponse, City, CrawlPage } from "./types.js";
 import { extractPdfText, isPdfUrl } from "./pdf.js";
+import {
+  matchesCrawlPathPrefix,
+  resolveCrawlPathPrefixes,
+} from "./paths.js";
 
 const MAX_DEPTH = 3;
 const POLL_INTERVAL_MS = 2000;
@@ -31,6 +35,17 @@ function isSameOrigin(url: string, origin: string): boolean {
   }
 }
 
+function pickMarkdownField(
+  record: Record<string, string | undefined>,
+  field: string,
+): string | undefined {
+  const value = record[field];
+  if (!value?.trim()) {
+    return undefined;
+  }
+  return value;
+}
+
 function extractMarkdown(result: Crawl4AiCrawlResult): string {
   const markdown = result.markdown;
 
@@ -41,9 +56,9 @@ function extractMarkdown(result: Crawl4AiCrawlResult): string {
   if (markdown && typeof markdown === "object") {
     const record = markdown as Record<string, string | undefined>;
     const content =
-      record.fit_markdown ??
-      record.raw_markdown ??
-      record.markdown_with_citations ??
+      pickMarkdownField(record, "fit_markdown") ??
+      pickMarkdownField(record, "raw_markdown") ??
+      pickMarkdownField(record, "markdown_with_citations") ??
       "";
 
     return content.trim();
@@ -191,11 +206,21 @@ async function crawlSingleUrl(
   return result;
 }
 
-export async function crawlSite(rootUrl: string): Promise<CrawlPage[]> {
+export async function crawlSite(city: City): Promise<CrawlPage[]> {
   const baseUrl = getCrawl4AiUrl();
+  const rootUrl = city.url;
   const origin = new URL(rootUrl).origin;
+  const pathPrefixes = resolveCrawlPathPrefixes(city);
+
+  console.log(
+    `[crawl] path prefixes for ${city.id}: ${pathPrefixes.join(", ")}`,
+  );
+
   const visited = new Set<string>();
   const pages: CrawlPage[] = [];
+
+  const isInScope = (url: string): boolean =>
+    isSameOrigin(url, origin) && matchesCrawlPathPrefix(url, pathPrefixes);
 
   type QueueItem = { url: string; depth: number };
   const queue: QueueItem[] = [{ url: rootUrl, depth: 0 }];
@@ -208,6 +233,10 @@ export async function crawlSite(rootUrl: string): Promise<CrawlPage[]> {
 
     const normalizedCurrent = normalizeUrl(current.url, rootUrl);
     if (!normalizedCurrent || visited.has(normalizedCurrent)) {
+      continue;
+    }
+
+    if (!isInScope(normalizedCurrent)) {
       continue;
     }
 
@@ -229,9 +258,7 @@ export async function crawlSite(rootUrl: string): Promise<CrawlPage[]> {
 
     const result = await crawlSingleUrl(baseUrl, normalizedCurrent);
     const markdown = extractMarkdown(result);
-    const links = extractLinks(result, normalizedCurrent).filter((link) =>
-      isSameOrigin(link, origin),
-    );
+    const links = extractLinks(result, normalizedCurrent).filter(isInScope);
 
     pages.push({
       url: normalizedCurrent,
@@ -246,6 +273,10 @@ export async function crawlSite(rootUrl: string): Promise<CrawlPage[]> {
     for (const link of links) {
       const normalizedLink = normalizeUrl(link, normalizedCurrent);
       if (!normalizedLink || visited.has(normalizedLink)) {
+        continue;
+      }
+
+      if (!isInScope(normalizedLink)) {
         continue;
       }
 

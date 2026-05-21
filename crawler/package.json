@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
+    "dry-run": "tsx src/index.ts --dry-run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

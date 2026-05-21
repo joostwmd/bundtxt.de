@@ -5,7 +5,8 @@
     "url": "https://www.berlin.de/einwanderung/",
     "language": "de",
     "hotline": "+49 30 90269-0",
-    "appointmentUrl": "https://otv.verwalt-berlin.de/"
+    "appointmentUrl": "https://otv.verwalt-berlin.de/",
+    "crawlPathPrefixes": ["/ukraine/"]
   },
   {
     "id": "muenchen",

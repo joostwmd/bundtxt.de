@@ -5,6 +5,8 @@ export interface City {
   language: string;
   hotline: string;
   appointmentUrl: string;
+  /** Extra URL path prefixes to crawl, e.g. ["/ukraine/"]. The prefix from `url` is always included automatically. */
+  crawlPathPrefixes?: string[];
 }
 
 export interface CrawlPage {

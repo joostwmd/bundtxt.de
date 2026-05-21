@@ -14,10 +14,14 @@ function getOpenRouterApiKey(): string {
   return key;
 }
 
-function buildPrompt(city: City, pages: CrawlPage[]): string {
-  const markdown = pages
+function buildCrawledMarkdown(pages: CrawlPage[]): string {
+  return pages
     .map((page) => `## ${page.url}\n\n${page.markdown}`)
     .join("\n\n---\n\n");
+}
+
+export function buildGenerationPrompt(city: City, pages: CrawlPage[]): string {
+  const markdown = buildCrawledMarkdown(pages);
 
   return `You are generating an llms.txt file for a German government website.
 This file will be read by AI models to answer questions from users — 
@@ -55,7 +59,7 @@ export async function generateLlmsTxt(
   city: City,
   pages: CrawlPage[],
 ): Promise<string> {
-  const prompt = buildPrompt(city, pages);
+  const prompt = buildGenerationPrompt(city, pages);
 
   const response = await fetch(OPENROUTER_URL, {
     method: "POST",
