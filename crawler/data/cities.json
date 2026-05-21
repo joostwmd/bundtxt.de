@@ -6,7 +6,10 @@
     "language": "de",
     "hotline": "+49 30 90269-0",
     "appointmentUrl": "https://otv.verwalt-berlin.de/",
-    "crawlPathPrefixes": ["/ukraine/"]
+    "crawlPathPrefixes": ["/ukraine/"],
+    "maxPages": 100,
+    "maxDepth": 3,
+    "skipEnglish": true
   },
   {
     "id": "muenchen",

@@ -7,6 +7,12 @@ export interface City {
   appointmentUrl: string;
   /** Extra URL path prefixes to crawl, e.g. ["/ukraine/"]. The prefix from `url` is always included automatically. */
   crawlPathPrefixes?: string[];
+  /** Max pages to crawl (default: 150) */
+  maxPages?: number;
+  /** Max depth for BFS crawl (default: 3) */
+  maxDepth?: number;
+  /** Skip English language pages (/en/ paths) */
+  skipEnglish?: boolean;
 }
 
 export interface CrawlPage {

@@ -4,8 +4,10 @@ import {
   matchesCrawlPathPrefix,
   resolveCrawlPathPrefixes,
 } from "./paths.js";
+import { cleanCrawlResults } from "./filter.js";
 
-const MAX_DEPTH = 3;
+const DEFAULT_MAX_DEPTH = 3;
+const DEFAULT_MAX_PAGES = 150;
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 300_000;
 
@@ -21,7 +23,12 @@ function normalizeUrl(url: string, baseUrl: string): string | null {
   try {
     const resolved = new URL(url, baseUrl);
     resolved.hash = "";
-    return resolved.toString();
+    // Clean up malformed URLs from markdown parsing (title attributes in hrefs)
+    let cleanUrl = resolved.toString();
+    if (cleanUrl.includes("%20%22")) {
+      cleanUrl = cleanUrl.split("%20%22")[0];
+    }
+    return cleanUrl;
   } catch {
     return null;
   }
@@ -211,13 +218,16 @@ export async function crawlSite(city: City): Promise<CrawlPage[]> {
   const rootUrl = city.url;
   const origin = new URL(rootUrl).origin;
   const pathPrefixes = resolveCrawlPathPrefixes(city);
+  const maxDepth = city.maxDepth ?? DEFAULT_MAX_DEPTH;
+  const maxPages = city.maxPages ?? DEFAULT_MAX_PAGES;
 
   console.log(
     `[crawl] path prefixes for ${city.id}: ${pathPrefixes.join(", ")}`,
   );
+  console.log(`[crawl] max depth: ${maxDepth}, max pages: ${maxPages}`);
 
   const visited = new Set<string>();
-  const pages: CrawlPage[] = [];
+  const rawPages: CrawlPage[] = [];
 
   const isInScope = (url: string): boolean =>
     isSameOrigin(url, origin) && matchesCrawlPathPrefix(url, pathPrefixes);
@@ -245,7 +255,7 @@ export async function crawlSite(city: City): Promise<CrawlPage[]> {
     if (isPdfUrl(normalizedCurrent)) {
       const pdfText = await extractPdfText(normalizedCurrent);
       if (pdfText) {
-        pages.push({
+        rawPages.push({
           url: normalizedCurrent,
           markdown: pdfText,
           links: [],
@@ -260,13 +270,13 @@ export async function crawlSite(city: City): Promise<CrawlPage[]> {
     const markdown = extractMarkdown(result);
     const links = extractLinks(result, normalizedCurrent).filter(isInScope);
 
-    pages.push({
+    rawPages.push({
       url: normalizedCurrent,
       markdown,
       links,
     });
 
-    if (current.depth >= MAX_DEPTH) {
+    if (current.depth >= maxDepth) {
       continue;
     }
 
@@ -284,7 +294,7 @@ export async function crawlSite(city: City): Promise<CrawlPage[]> {
         const pdfText = await extractPdfText(normalizedLink);
         if (pdfText) {
           visited.add(normalizedLink);
-          pages.push({
+          rawPages.push({
             url: normalizedLink,
             markdown: pdfText,
             links: [],
@@ -297,5 +307,13 @@ export async function crawlSite(city: City): Promise<CrawlPage[]> {
     }
   }
 
-  return pages;
+  console.log(`[crawl] Raw crawl complete: ${rawPages.length} pages`);
+  
+  const cleanedPages = cleanCrawlResults(rawPages, {
+    maxPages,
+    skipEnglish: city.skipEnglish ?? true,
+    skipLowValue: true,
+  });
+
+  return cleanedPages;
 }
